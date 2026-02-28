@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC Tracker 3D - Live Chart & Balance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --btc-orange: #f7931a; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08); border-radius: 28px; }
+        .btn-3d { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 6px 0px #c2410c; }
+        .btn-3d:active { transform: translateY(4px); box-shadow: 0 2px 0px #c2410c; }
+        .crypto-logo { filter: drop-shadow(0 12px 20px rgba(247, 147, 26, 0.4)); animation: float 4s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-15px) rotate(3deg); } }
+        .hidden-value { filter: blur(10px); pointer-events: none; opacity: 0.6; }
+        #qrcode img { margin: 0 auto; border: 12px solid white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .chart-container { height: 450px; border-radius: 24px; overflow: hidden; border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body class="min-h-screen py-10 px-4 flex flex-col items-center">
+
+    <div class="max-w-3xl w-full space-y-6">
+        <!-- Logo & Header -->
+        <div class="text-center mb-4">
+            <div class="flex justify-center mb-6">
+                <svg class="crypto-logo w-20 h-20" viewBox="0 0 64 64" fill="none">
+                    <circle cx="32" cy="32" r="32" fill="#F7931A"/>
+                    <path d="M46.108 27.334c0.556-3.712-2.269-5.71-6.131-7.038l1.254-5.028-3.059-0.763-1.22 4.893c-0.804-0.201-1.631-0.389-2.451-0.575l1.226-4.918-3.059-0.763-1.254 5.028c-0.666-0.152-1.321-0.301-1.956-0.457l0.002-0.008-4.221-1.054-0.814 3.267s2.271 0.521 2.223 0.553c1.24 0.31 1.464 1.131 1.427 1.782l-1.429 5.733c0.085 0.021 0.196 0.052 0.318 0.101l-0.321-0.08-2.003 8.033c-0.152 0.377-0.537 0.943-1.405 0.727 0.033 0.047-2.223-0.554-2.223-0.554l-1.519 3.504 3.984 0.994c0.741 0.186 1.465 0.379 2.176 0.562l-1.266 5.087 3.058 0.763 1.255-5.032c0.835 0.227 1.649 0.443 2.441 0.648l-1.25 5.011 3.059 0.763 1.266-5.081c5.22 0.988 9.146 0.59 10.798-4.133 1.332-3.801-0.066-5.993-2.808-7.421 1.996-0.461 3.5-1.774 3.899-4.483zm-6.974 9.791c-0.946 3.799-7.346 1.745-9.419 1.228l1.681-6.742c2.072 0.517 8.742 1.54 7.738 5.514zm1.056-9.839c-0.863 3.461-6.195 1.703-7.92 1.272l1.523-6.108c1.726 0.43 7.306 1.235 6.397 4.836z" fill="white"/>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Bitcoin Tracker Pro</h1>
+            <p class="text-slate-500 font-medium">Monitoring Saldo, QR & Live Chart</p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="glass-card p-6 md:p-8">
+            <div class="space-y-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Public Key / Address</label>
+                    <div class="relative group">
+                        <input type="text" id="btcAddress" 
+                            placeholder="Tempel atau ketik alamat BTC di sini..." 
+                            class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-50 transition-all text-base md:text-lg font-mono bg-white shadow-inner"
+                            value="">
+                        <button onclick="clearInput()" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <button onclick="fetchBalance()" 
+                    class="btn-3d w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 px-8 rounded-2xl text-lg flex items-center justify-center gap-3">
+                    <span id="btnText">HUBUNGKAN JARINGAN</span>
+                    <div id="loader" class="hidden animate-spin rounded-full h-6 w-6 border-4 border-white border-t-transparent"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Notification -->
+        <div id="statusMsg" class="hidden text-center p-4 rounded-2xl font-bold"></div>
+
+        <!-- Results & QR Section -->
+        <div id="resultCard" class="hidden space-y-6">
+            <!-- QR Code Card -->
+            <div class="glass-card p-8 text-center bg-white">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Scan QR untuk Kirim Gift</h3>
+                <div id="qrcode" class="flex justify-center mb-6 overflow-hidden"></div>
+                <div class="inline-block bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 mb-2">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Current Address</p>
+                    <p id="displayAddr" class="font-mono text-xs font-bold text-slate-700 break-all"></p>
+                </div>
+            </div>
+
+            <!-- Balance Details Card -->
+            <div class="glass-card p-8">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+                    <div class="text-center md:text-left">
+                        <h2 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Saldo Saat Ini</h2>
+                        <div class="flex items-center gap-3 justify-center md:justify-start">
+                            <span id="btcValue" class="text-4xl md:text-5xl font-black text-slate-800">0.00000000</span>
+                            <span class="text-xl font-bold text-orange-500">BTC</span>
+                        </div>
+                        <p id="satoshiValue" class="text-slate-500 text-sm font-mono mt-1 font-semibold italic">0 Satoshi</p>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button onclick="togglePrivacy()" class="p-4 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all">
+                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </button>
+                        <button onclick="speakOut()" id="speakBtn" class="p-4 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H2v6h4l5 4V5z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-black text-slate-400 mb-1 tracking-widest">USD VALUATION</p>
+                        <p id="usdValue" class="text-2xl font-black text-emerald-600">$0.00</p>
+                        <p id="usdWords" class="text-[9px] text-slate-400 mt-3 font-bold uppercase"></p>
+                    </div>
+                    <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-black text-slate-400 mb-1 tracking-widest">ESTIMASI IDR</p>
+                        <p id="idrValue" class="text-2xl font-black text-blue-600">Rp 0</p>
+                        <p id="idrWords" class="text-[9px] text-slate-400 mt-3 font-bold uppercase"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Chart -->
+        <div class="glass-card p-6 md:p-8">
+            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                Grafik Bitcoin Live (BTC/USD)
+            </h3>
+            <div class="chart-container">
+                <div class="tradingview-widget-container" style="height:100%;width:100%">
+                  <div id="tradingview_btc" style="height:calc(100% - 32px);width:100%"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                  <script type="text/javascript">
+                  new TradingView.widget({
+                    "autosize": true,
+                    "symbol": "BITSTAMP:BTCUSD",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "3",
+                    "locale": "id",
+                    "toolbar_bg": "#f1f3f6",
+                    "enable_publishing": false,
+                    "allow_symbol_change": true,
+                    "container_id": "tradingview_btc"
+                  });
+                  </script>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support Info -->
+        <div class="text-center p-6 bg-blue-50 rounded-2xl border border-blue-100">
+            <p class="text-xs text-blue-800 font-bold mb-3 uppercase tracking-tighter italic">Support Developer / Gift Address:</p>
+            <div class="flex flex-col items-center gap-3">
+                <code class="text-[10px] md:text-xs font-mono font-black text-blue-900 bg-white px-3 py-2 rounded-lg border border-blue-200 break-all w-full">bc1qj0f47j0lyvx6pvk0yvnt3j49q7nupmupf4f6w8</code>
+                <button onclick="copyDevAddr()" class="bg-blue-600 text-white text-[10px] font-black px-6 py-2 rounded-full hover:bg-blue-700 transition-all uppercase shadow-md">Salin Alamat Donasi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentBtcBalance = 0;
+        let rates = { usd: 0, idr: 0 };
+        let isPrivate = false;
+        let qrCodeInstance = null;
+
+        function clearInput() {
+            document.getElementById('btcAddress').value = '';
+            document.getElementById('btcAddress').focus();
+        }
+
+        async function fetchBalance() {
+            const addr = document.getElementById('btcAddress').value.trim();
+            const btnText = document.getElementById('btnText');
+            const loader = document.getElementById('loader');
+            const status = document.getElementById('statusMsg');
+            const result = document.getElementById('resultCard');
+
+            if (!addr) {
+                showStatus("MASUKKAN ALAMAT BTC TERLEBIH DAHULU", "error");
+                return;
+            }
+
+            btnText.classList.add('hidden');
+            loader.classList.remove('hidden');
+            status.classList.add('hidden');
+
+            try {
+                const priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,idr');
+                const priceData = await priceRes.json();
+                rates.usd = priceData.bitcoin.usd;
+                rates.idr = priceData.bitcoin.idr;
+
+                let balanceSatoshi = 0;
+                let success = false;
+
+                try {
+                    const res1 = await fetch(`https://blockchain.info/rawaddr/${addr}?cors=true`);
+                    if (res1.ok) {
+                        const d1 = await res1.json();
+                        balanceSatoshi = d1.final_balance;
+                        success = true;
+                    }
+                } catch (e) {}
+
+                if (!success) {
+                    const res2 = await fetch(`https://api.blockcypher.com/v1/btc/main/addrs/${addr}/balance`);
+                    if (res2.ok) {
+                        const d2 = await res2.json();
+                        balanceSatoshi = d2.final_balance;
+                        success = true;
+                    }
+                }
+
+                if (!success) throw new Error("ALAMAT TIDAK VALID ATAU JARINGAN SIBUK");
+
+                currentBtcBalance = balanceSatoshi / 100000000;
+                updateDisplay(addr);
+                result.classList.remove('hidden');
+                showStatus("SINKRONISASI BERHASIL!", "success");
+                generateQR(addr);
+
+            } catch (err) {
+                showStatus(err.message, "error");
+                result.classList.add('hidden');
+            } finally {
+                btnText.classList.remove('hidden');
+                loader.classList.add('hidden');
+            }
+        }
+
+        function generateQR(addr) {
+            const qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = "";
+            const size = window.innerWidth < 480 ? 200 : 256;
+            qrCodeInstance = new QRCode(qrContainer, {
+                text: `bitcoin:${addr}`,
+                width: size,
+                height: size,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        function updateDisplay(addr) {
+            const btc = currentBtcBalance;
+            const usd = btc * rates.usd;
+            const idr = btc * rates.idr;
+            const sat = Math.round(btc * 100000000);
+
+            document.getElementById('displayAddr').innerText = addr;
+            document.getElementById('btcValue').innerText = btc.toFixed(8);
+            document.getElementById('satoshiValue').innerText = `${sat.toLocaleString('id-ID')} Satoshi`;
+            document.getElementById('usdValue').innerText = `$${usd.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            document.getElementById('idrValue').innerText = `Rp ${Math.floor(idr).toLocaleString('id-ID')}`;
+            document.getElementById('idrWords').innerText = terbilang(Math.floor(idr)) + " RUPIAH";
+        }
+
+        function showStatus(msg, type) {
+            const status = document.getElementById('statusMsg');
+            status.innerText = msg;
+            status.className = `text-center p-4 rounded-2xl font-bold ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`;
+            status.classList.remove('hidden');
+        }
+
+        function togglePrivacy() {
+            isPrivate = !isPrivate;
+            const elements = ['btcValue', 'satoshiValue', 'usdValue', 'idrValue', 'idrWords'];
+            elements.forEach(id => document.getElementById(id).classList.toggle('hidden-value', isPrivate));
+        }
+
+        function speakOut() {
+            if (currentBtcBalance === 0) return;
+            const idr = Math.floor(currentBtcBalance * rates.idr);
+            const text = `Saldo terdeteksi ${currentBtcBalance.toFixed(8)} Bitcoin. Estimasi nilai adalah ${terbilang(idr)} rupiah.`;
+            
+            const synth = window.speechSynthesis;
+            const utter = new SpeechSynthesisUtterance(text);
+            
+            // Logika Suara Pintar (HP/PC)
+            const voices = synth.getVoices();
+            // Cari suara Indonesia (PC biasanya punya Microsoft Andika/Indonesian, HP biasanya Google Bahasa Indonesia)
+            const idVoice = voices.find(v => v.lang.includes('id-ID') || v.name.toLowerCase().includes('indonesian'));
+            
+            if (idVoice) utter.voice = idVoice;
+            utter.lang = 'id-ID';
+            utter.rate = 1.0;
+            utter.pitch = 1.0;
+            
+            synth.speak(utter);
+        }
+
+        function copyDevAddr() {
+            const el = document.createElement('textarea');
+            el.value = 'bc1qj0f47j0lyvx6pvk0yvnt3j49q7nupmupf4f6w8';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            alert("Alamat Donasi Tersalin!");
+        }
+
+        function terbilang(n) {
+            const w = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+            if (n < 12) return w[n];
+            if (n < 20) return terbilang(n - 10) + " Belas";
+            if (n < 100) return terbilang(Math.floor(n / 10)) + " Puluh " + terbilang(n % 10);
+            if (n < 200) return "Seratus " + terbilang(n - 100);
+            if (n < 1000) return terbilang(Math.floor(n / 100)) + " Ratus " + terbilang(n % 100);
+            if (n < 2000) return "Seribu " + terbilang(n - 1000);
+            if (n < 1000000) return terbilang(Math.floor(n / 1000)) + " Ribu " + terbilang(n % 1000);
+            if (n < 1000000000) return terbilang(Math.floor(n / 1000000)) + " Juta " + terbilang(n % 1000000);
+            if (n < 1000000000000) return terbilang(Math.floor(n / 1000000000)) + " Miliar " + terbilang(n % 1000000000);
+            return "Nilai Sangat Besar";
+        }
+        
+        // Load voices early
+        window.speechSynthesis.getVoices();
+    </script>
+</body>
+</html>
+
